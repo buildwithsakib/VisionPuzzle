@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>VisionPuzzle — by sakib</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css" />
+</head>
+<body class="theme-dark">
+<div id="app">
+
+  <div id="stage">
+    <video id="webcam" playsinline autoplay muted></video>
+    <canvas id="sceneCanvas"></canvas>
+    <canvas id="confettiCanvas" class="confetti-canvas"></canvas>
+
+    <div class="hud-top">
+      <div class="brand">VISION·PUZZLE <small>Hand Gesture Puzzle Experience by sakib</small></div>
+      <div class="hud-right-group">
+        <button id="difficultyBtn" class="hud-icon-btn" title="Difficulty">🧩</button>
+        <button id="settingsBtn" class="hud-icon-btn" title="Settings">⚙️</button>
+        <div id="puzzleTimer" class="timer-display">00:00</div>
+        <div id="bestTimeDisplay" class="best-time">Best: --:--</div>
+        <div id="moveCounterDisplay" class="move-counter">Moves: 0</div>
+        <div class="status-pill">
+          <span id="statusDot" class="status-dot"></span>
+          <span id="statusText">starting camera…</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="progressBadge" class="progress-badge">
+      <span id="progressText">0 / 9 pieces placed</span>
+    </div>
+
+    <div id="recIndicator" class="rec-indicator hidden">
+      <span class="rec-dot"></span> REC
+    </div>
+
+    <div id="loadingOverlay">
+      <div class="loader-spinner"></div>
+      <div class="loader-text" id="loaderText">loading HandLandmarker model…</div>
+      <div class="loader-bar"></div>
+      <button type="button" id="loaderRetry" class="loader-retry hidden">retry</button>
+    </div>
+
+    <div id="errorBanner"></div>
+    <div id="flashOverlay"></div>
+
+    <!-- Completion Overlay -->
+    <div id="completionOverlay" class="completion-overlay hidden">
+      <div class="completion-card">
+        <h2>Puzzle Complete!</h2>
+        <div class="completion-stats">
+          <p><span>Time:</span> <span id="completionTime">00:00</span></p>
+          <p><span>Moves:</span> <span id="completionMoves">0</span></p>
+          <p><span>Best Time:</span> <span id="completionBestTime">--:--</span></p>
+        </div>
+        <div class="completion-buttons">
+          <button id="completionSaveBtn">Save to Strip</button>
+          <button id="completionDownloadBtn">Download</button>
+          <button id="completionPlayAgainBtn">Play Again</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pause Overlay -->
+    <div id="pauseOverlay" class="pause-overlay hidden">
+      <div class="pause-text">PAUSED</div>
+      <div class="pause-hint">Press Space to resume</div>
+    </div>
+  </div>
+
+  <aside id="gallery">
+    <div class="gallery-head">
+      <span class="gallery-title">Strip</span>
+      <input type="text" id="stripRenameInput" class="strip-rename-input hidden" placeholder="strip name" />
+      <span class="gallery-count" id="galleryCount">0 / 3</span>
+    </div>
+
+    <div class="strip-complete-msg" id="stripCompleteMsg">
+      strip complete — download or reset to continue
+    </div>
+
+    <div id="galleryStrip" class="gallery-strip">
+      <div class="gallery-empty" id="galleryEmpty">
+        Your completed puzzles<br/>will appear here.
+      </div>
+    </div>
+
+    <div class="gallery-actions">
+      <button type="button" id="downloadStripBtn" class="gallery-action-btn" disabled>download strip</button>
+      <button type="button" id="downloadVideoBtn" class="gallery-action-btn" disabled>download video</button>
+      <button type="button" id="resetAllBtn" class="gallery-action-btn gallery-action-btn--danger">reset all</button>
+    </div>
+  </aside>
+
+</div>
+
+<div class="copyright">© 2026 sakib. — all rights reserved</div>
+
+<!-- Strip Preview Modal -->
+<div id="stripModal" class="strip-modal hidden">
+  <div class="strip-modal-inner">
+    <div class="strip-modal-title">YOUR PHOTO STRIP</div>
+    <canvas id="stripPreviewCanvas"></canvas>
+    <div class="strip-modal-actions">
+      <button id="stripModalDownload" class="strip-modal-btn">download</button>
+      <button id="stripModalClose" class="strip-modal-btn strip-modal-btn--ghost">close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Difficulty Modal -->
+<div id="difficultyModal" class="modal hidden">
+  <div class="modal-backdrop"></div>
+  <div class="modal-content">
+    <h2 class="modal-title">Select Difficulty</h2>
+    <div class="difficulty-options">
+      <button class="difficulty-btn" data-grid="2">Easy (2×2)</button>
+      <button class="difficulty-btn active" data-grid="3">Medium (3×3)</button>
+      <button class="difficulty-btn" data-grid="4">Hard (4×4)</button>
+      <button class="difficulty-btn" data-grid="5">Extreme (5×5)</button>
+    </div>
+    <button id="difficultyCloseBtn" class="modal-close-btn">Close</button>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div id="settingsModal" class="modal hidden">
+  <div class="modal-backdrop"></div>
+  <div class="modal-content settings-content">
+    <h2 class="modal-title">Settings</h2>
+    <div class="settings-group">
+      <label>Sound <input type="checkbox" id="settingSound" checked></label>
+      <label>Music <input type="checkbox" id="settingMusic" checked></label>
+      <label>Camera Mirror <input type="checkbox" id="settingMirror" checked></label>
+      <label>Animations <input type="checkbox" id="settingAnimations" checked></label>
+      <label>Show FPS <input type="checkbox" id="settingFps"></label>
+    </div>
+    <div class="settings-group">
+      <label>Theme</label>
+      <select id="settingTheme">
+        <option value="dark">Dark</option>
+        <option value="light">Light</option>
+        <option value="neon">Neon</option>
+        <option value="retro">Retro</option>
+      </select>
+    </div>
+    <button id="settingsCloseBtn" class="modal-close-btn">Close</button>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div id="toastContainer" class="toast-container"></div>
+
+<!-- FPS Counter -->
+<div id="fpsCounter" class="fps-counter hidden">FPS: --</div>
+
+<script type="module" src="./app.js"></script>
+</body>
+</html>
